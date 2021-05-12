@@ -1,116 +1,86 @@
 ﻿#include <iostream>
-#include <iomanip>
-#include <cstdlib>
 #include <fstream>
-#include <vector>
 #include <string>
+#include <iomanip>
+#include "Header.h"
 
-void skipComments(std::istream* is)
+using namespace std;
+
+struct PosterDynamicArr
 {
-	while (is->peek() == '#')
+	Poster* data;
+	int length;
+	PosterDynamicArr()
 	{
-		char next_char = is->get();
-		while (next_char != 0x0a)
-		{
-			next_char = is->get();
-		}
+		data = nullptr;
+		length = 0;
 	}
-}
-
-std::string readLine(std::istream* is)
-{
-	skipComments(is);
-	std::string result;
-	char lastchar = is->get();
-	while (lastchar != 0x0a)
+	~PosterDynamicArr()
 	{
-		result += lastchar;
-		lastchar = is->get();
+		delete[] data;
 	}
-	return result;
-}
-
-struct size { unsigned int x; unsigned int y; };
-
-size parseSize(std::string title_size)
-{
-	unsigned int len = title_size.length();
-	std::string
-		str_x = "",
-		str_y = "";
-	bool space_jumped = false;
-	for (int i = 0; i < len; i++)
+	void add(Poster input)
 	{
-		char next_char = title_size[i];
-		if (next_char == ' ')
+		Poster* newdata = new Poster[++length];
+		for (int i = 0; i < length - 1; i++)
 		{
-			space_jumped = true;
-			continue;
+			newdata[i] = data[i];
 		}
-		if (space_jumped)
-		{
-			str_y += next_char;
-		}
-		else
-		{
-			str_x += next_char;
-		}
+		newdata[length - 1] = input;
+		delete[] data;
+		data = newdata;
 	}
-	return { (unsigned int)std::stoi(str_x), (unsigned int)std::stoi(str_y) };
-}
+};
 
 int main()
 {
-	// reading in img_in
-	std::ifstream ifs("C:\\Temp\\img_in.pnm", std::ios::binary);
-	std::string
-		title_format = readLine(&ifs) + '\n',
-		title_size = readLine(&ifs) + '\n',
-		title_deepcolor= readLine(&ifs) + '\n';
-	size img_size = parseSize(title_size);
-	unsigned int deepcolor = (unsigned int)std::stoi(title_deepcolor);
-	std::vector<std::vector<unsigned char>> img_in{};
-	img_in.resize(img_size.y);
-	for (unsigned int i = 0; i < img_size.y; i++)
+	ifstream ifs("C:\\Temp\\input.txt");
+	ofstream ofs("C:\\Temp\\output.txt");
+	Poster poster;
+	PosterDynamicArr pda;
+	while (ifs.peek() != EOF)
 	{
-		img_in[i].resize(img_size.x);
+		Poster poster;
+		poster.read(ifs);
+		pda.add(poster);
 	}
-	for (unsigned int y = 0; y < img_size.y; y++)
+	cout
+		<< left << setw(10) << "Name" << ' '
+		<< setw(9) << "Hall Num" << ' '
+		<< setw(14) << "Places Amount" << ' '
+		<< setw(12) << "Ticket Cost" << ' '
+		<< setw(11) << "Begin Time" << endl;
+	for (int i = 0; i < pda.length; i++)
 	{
-		for (unsigned int x = 0; x < img_size.x; x++)
+		cout
+			<< left << setw(10) << pda.data[i].getName() << ' '
+			<< setw(9) << pda.data[i].getHallNum() << ' '
+			<< setw(14) << pda.data[i].getPlacesAmount() << ' '
+			<< setw(12) << pda.data[i].getTicketCost() << ' '
+			<< right << setw(2) << pda.data[i].getBeginTime().hours << ':' << left
+			<< (pda.data[i].getBeginTime().minutes < 10 ? "0" : "")
+			<< pda.data[i].getBeginTime().minutes << endl;
+	}
+	cout << endl << "Input the name of a film" << endl;
+	string filmName;
+	cin >> filmName;
+	int filmCounter = 0;
+	for (int i = 0; i < pda.length; i++)
+	{
+		if (filmName == pda.data[i].getName())
 		{
-			img_in[y][x] = ifs.get();
+			pda.data[i].write(ofs);
+			filmCounter++;
 		}
 	}
-
-	// copying in img_out
-	std::vector<std::vector<unsigned char>> img_out{};
-	img_out.resize(img_size.y);
-	for (unsigned int i = 0; i < img_size.y; i++)
+	if (filmCounter)
 	{
-		img_out[i].resize(img_size.x);
+		cout << endl << "Film schedule has successfully output in output.txt" << endl;
 	}
-	for (unsigned int y = 0; y < img_size.y; y++)
+	else
 	{
-		for (unsigned int x = 0; x < img_size.x; x++)
-		{
-			img_out[y][x] = img_in[y][x];
-		}
+		cout << endl << "There is no films with this name" << endl;
 	}
-
-	// writing from img_out
-	std::ofstream ofs("C:\\Temp\\img_out.pnm", std::ios_base::binary);
-	ofs.write(title_format.c_str(), title_format.size());
-	ofs.write(title_size.c_str(), title_size.size());
-	ofs.write(title_deepcolor.c_str(), title_deepcolor.size());
-	for (unsigned int y = 0; y < img_size.y; y++)
-	{
-		for (unsigned int x = 0; x < img_size.x; x++)
-		{
-			ofs.put(img_out[y][x]);
-		}
-	}
+	ifs.close();
 	ofs.close();
-
-	return 0;
 }
